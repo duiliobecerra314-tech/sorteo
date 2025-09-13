@@ -1,0 +1,55 @@
+let numbers = Array.from({ length: 1000 }, (_, i) => ({
+  id: i + 1,
+  status: "free", // free | reserved | sold
+  reservedUntil: null
+}));
+
+export default function handler(req, res) {
+  const { method } = req;
+
+  if (method === "GET") {
+    // liberar reservas vencidas
+    const now = Date.now();
+    numbers = numbers.map(n => {
+      if (n.status === "reserved" && n.reservedUntil < now) {
+        return { ...n, status: "free", reservedUntil: null };
+      }
+      return n;
+    });
+    return res.status(200).json(numbers);
+  }
+
+  if (method === "POST") {
+    const { action, ids } = req.body || {};
+    const now = Date.now();
+
+    if (!Array.isArray(ids)) {
+      return res.status(400).json({ error: "Faltan ids (array)" });
+    }
+
+    if (action === "reserve") {
+      numbers = numbers.map(n => {
+        if (ids.includes(n.id) && n.status === "free") {
+          return { ...n, status: "reserved", reservedUntil: now + 5 * 60 * 1000 };
+        }
+        return n;
+      });
+      return res.status(200).json({ success: true });
+    }
+
+    if (action === "confirm") {
+      numbers = numbers.map(n => {
+        if (ids.includes(n.id) && n.status === "reserved") {
+          return { ...n, status: "sold", reservedUntil: null };
+        }
+        return n;
+      });
+      return res.status(200).json({ success: true });
+    }
+
+    return res.status(400).json({ error: "Acción inválida" });
+  }
+
+  res.setHeader("Allow", ["GET", "POST"]);
+  res.status(405).end(Method ${method} Not Allowed);
+}
